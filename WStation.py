@@ -4,8 +4,8 @@ import Adafruit_Nokia_LCD as LCD
 import Adafruit_GPIO.SPI as SPI
 from Adafruit_BME280 import *
 
-import WStation_fun_04 as WS
-import numpy as np
+import WStation_fun_05 as WS
+#import numpy as np
 
 ##############################################################################
 # Durations settings
@@ -26,7 +26,7 @@ GPIO.setup(buttonPin,GPIO.IN)
 
 ##############################################################################
 # LCD contrast
-default_contrast=60
+default_contrast=50
 
 # Raspberry Pi hardware SPI config for Nokia 5110 display
 DC = 23
@@ -55,20 +55,29 @@ print 'Humidity  = {0:0.2f} %'.format(humidity)
 ##############################################################################
 # Log file initialization
 logfile='WS_log.txt'
+line=[]
 if os.path.isfile(logfile):
 	with open(logfile,'r') as log:
-		line=log.readlines()
+		line.append(log.readlines())
 	shutil.move(logfile,'WS_log_'+time.strftime('%Y%m%d%H%M%S')+'.txt')
 
 with open(logfile,'a') as log:
-	log.writelines(line[-1])
+	if 'line' in locals() and len(line)!=0 :
+		log.writelines(line[-1])
 	log.write('%17.6f %.2f %.2f %.2f\n' % (time.time(), temperature, pressure, humidity))
+	log.write('%17.6f %.2f %.2f %.2f\n' % (time.time(), temperature, pressure, humidity)) # duplicate to ensure multiple lines
 
 # LCD Figures
 figs  =['figure_1.png','figure_2.png','figure_3.png']
 titles=['T 24h (dgC)','P 24h (hPa)','HR 24h (%)']
-# Figure initialization
-WS.gen_curve(logfile)
+# LCD Figures initialization
+WS.gen_curve(logfile,figs,titles)
+
+# Web Figures
+web_figs  =['web_figure_1.png','web_figure_2.png','web_figure_3.png']
+web_titles=['Temperature (dgC)','Pressure (hPa)','Relative humidity (%)']
+# Web Figures initialization
+WS.gen_web_curve(logfile,web_figs,web_titles)
 
 ##############################################################################
 # Initialize loop
@@ -90,7 +99,8 @@ while True:
 		with open(logfile,'a') as log:
 			log.write('%17.6f %.2f %.2f %.2f\n' % (cur_time, temperature, pressure, humidity))
 		
-		WS.gen_curve(logfile)
+		WS.gen_curve(logfile,figs,titles)
+		WS.gen_web_curve(logfile,web_figs,web_titles)
 
 	# Button interactions
 	inread=GPIO.input(buttonPin)
@@ -104,7 +114,7 @@ while True:
 
 		elif mod>0:
 			WS.display_reset(spidev)
-			WS.display_image(spidev,figs[mod-1], titles[mod-1])
+			WS.display_image(spidev,figs[mod-1])
 			mod+=1
 			if mod>modmax:
 				mod=0

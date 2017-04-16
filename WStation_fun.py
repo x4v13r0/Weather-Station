@@ -13,22 +13,15 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 
+# matplotlib initialisation valid for ALL plots (LCD & web)
+mpl.rcParams["axes.formatter.useoffset"]=False
+
 # LCD contrast
 default_contrast=50
 
 # Raspberry Pi hardware SPI config for Nokia 5110 display
 DC = 23
 RST = 24
-SPI_PORT = 0
-SPI_DEVICE = 0
-
-# 84x48 @100dpi
-mpl.rcParams["figure.figsize"] = (LCD.LCDWIDTH/100., LCD.LCDHEIGHT/100.)
-mpl.rcParams["figure.subplot.bottom"]=0.3
-mpl.rcParams["ytick.labelsize"]=8
-mpl.rcParams["font.weight"]="bold"
-mpl.rcParams["font.family"]="Dot-Matrix"
-mpl.rcParams["axes.formatter.useoffset"]=False
 
 def get_sensordata(sensor):
 	temp = sensor.read_temperature()
@@ -56,9 +49,8 @@ def display_curdata(spidev,temperature,pressure,humidity):
 	draw.rectangle((0,0,LCD.LCDWIDTH,LCD.LCDHEIGHT), outline=255, fill=255)
 	
 	# Load font.
-	font = ImageFont.load_default()
 	font_path='dotmatrixnormal.ttf'
-	font = ImageFont.truetype(font_path,10)
+	font = ImageFont.truetype(font_path,8)
 
 	datastring='T = %6.1f C' % temperature
 	draw.text((4,8), datastring, font=font)
@@ -71,7 +63,26 @@ def display_curdata(spidev,temperature,pressure,humidity):
 	disp.image(image)
 	disp.display()
 
-def display_image(spidev,image_file,title):
+def display_image(spidev,image_file):
+	# Hardware SPI usage:
+	disp = LCD.PCD8544(DC, RST, spi=spidev)
+	# Initialize library.
+	disp.begin(contrast=default_contrast)
+	
+	# Clear display.
+	disp.clear()
+	disp.display()
+	
+	# Load image and convert to 1 bit color and resize
+	image = Image.open(image_file).convert('1').resize((LCD.LCDWIDTH, LCD.LCDHEIGHT))
+	# Force black and white
+	imgbw=image.point(lambda x: 0 if x<230 else 255, '1')
+
+	# Display image.
+	disp.image(imgbw)
+	disp.display()
+	
+def display_image_old(spidev,image_file,title):
 	# Hardware SPI usage:
 	disp = LCD.PCD8544(DC, RST, spi=spidev)
 	# Initialize library.
@@ -89,7 +100,7 @@ def display_image(spidev,image_file,title):
 
 	# Load font.
 	font_path='dotmatrixnormal.ttf'
-	font = ImageFont.truetype(font_path,10)
+	font = ImageFont.truetype(font_path,8)
 	draw.text((15,40), title, font=font)
 	
 	# Display image.
@@ -101,15 +112,52 @@ def display_reset(spidev):
 	disp = LCD.PCD8544(DC, RST, spi=spidev)
 	disp.reset()
 
-def gen_curve(datafile):
+def gen_curve(datafile,figs,titles):
 	data=np.loadtxt(datafile)
 	ind=data[:,0]>data[-1,0]-24*60*60 # Last day restriction
 	dat=data[ind,:]
 	t=dat[:,0]
 	for i in range(1,dat.shape[1]):
+		title=titles[i-1]
+		fig=figs[i-1]
 		dati=dat[:,i]
-		plt.figure(i)
+
+		f1=plt.figure(i,figsize=(LCD.LCDWIDTH/100., LCD.LCDHEIGHT/100.),dpi=100)
+		f1.subplots_adjust(bottom=0.39,top=0.8,left=0.,right=1.)
 		ax=plt.axes(frameon=False)
+		plt.plot(t,dati,'sk',ms=1,mfc='k')
+		ma=np.ceil(dati.max())
+		mi=np.floor(dati.min())
+		plt.ylim([mi,ma])
+		plt.xlim([t.min()-1.,t.max()+1.])
+		# Ticks config
+		med=np.floor((mi+ma)/2.)
+		ytis=np.unique([mi,med,ma])
+		dig=max(len(str(mi)),len(str(ma)))
+		plt.yticks(ytis,fontsize=8,fontname="Dot-Matrix",fontweight="bold")
+		plt.tick_params(axis='y',direction='in', pad=-2-4*dig)
+		plt.xticks([])
+		plt.xlabel(title,fontsize=8,fontname="Dot-Matrix",fontweight="bold")
+		plt.savefig(fig,dpi=100)
+		#Force black and white
+		imggray=Image.open(fig).convert('L')
+		imgbw=imggray.point(lambda x: 0 if x<230 else 255, '1')
+		imgbw.save(fig)
+	plt.close('all')
+		
+def gen_curve_old(datafile,figs):
+	data=np.loadtxt(datafile)
+	ind=data[:,0]>data[-1,0]-24*60*60 # Last day restriction
+	dat=data[ind,:]
+	t=dat[:,0]
+	for i in range(1,dat.shape[1]):
+		fig=figs[i-1]
+		dati=dat[:,i]
+
+		# 84x48 @100dpi by defaults
+		plt.figure(i,figsize=(LCD.LCDWIDTH/100., LCD.LCDHEIGHT/100.))
+		ax=plt.axes(frameon=False)
+		ax.set_position([0,0.7,1,0.7])
 		plt.plot(t,dati,'sk',ms=1,mfc='k')
 		ma=np.ceil(dati.max())
 		mi=np.floor(dati.min())
@@ -121,16 +169,6 @@ def gen_curve(datafile):
 		plt.yticks(ytis)
 		plt.xticks([])
 		
-		#dig=max(len(str(mi)),len(str(ma)))
-		#fmt='%'+'%d'%dig+'.0f' #format of yticklabel: %n.0f
-		#padval=-10-dig*6       #position the ytick label inside the axe
-	
-		#majorFormatter=FormatStrFormatter(fmt)
-		#ax.yaxis.set_major_formatter(majorFormatter)
-		#plt.tick_params(pad=padval)
-
-		#plt.savefig('figure_%d.png' % i)
-
 		# Save temporary figure
 		plt.yticks([])
 		plt.savefig('figure_tmp.png')
@@ -145,4 +183,21 @@ def gen_curve(datafile):
 		for j,yti in enumerate(ytis):
 			ypos=30-(yti-mi)*30/(ma-mi)
 			draw.text((10,ypos), '-%.0f' % yti, font=font)
-		image.save('figure_%1d.png' % i,'PNG')
+		image.save(fig,'PNG')
+
+def gen_web_curve(datafile,figs,titles):
+	data=np.loadtxt(datafile)
+	t=data[:,0]
+	for i in range(1,data.shape[1]):
+		title=titles[i-1]
+		fig=figs[i-1]
+		
+		dati=data[:,i]
+		plt.figure(i,figsize=(12,8))
+		plt.plot(t,dati,'b',lw=2)
+		plt.xlabel('time',fontsize=10)
+		plt.ylabel(title,fontsize=10)
+		#plt.show()
+
+		plt.savefig('/var/www/html/'+fig)
+	plt.close('all')
