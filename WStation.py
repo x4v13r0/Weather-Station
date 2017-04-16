@@ -4,7 +4,7 @@ import Adafruit_Nokia_LCD as LCD
 import Adafruit_GPIO.SPI as SPI
 from Adafruit_BME280 import *
 
-import WStation_fun_03 as WS
+import WStation_fun_04 as WS
 import numpy as np
 
 ##############################################################################
@@ -25,19 +25,20 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setup(buttonPin,GPIO.IN)
 
 ##############################################################################
-## LCD contrast
-#default_contrast=60
+# LCD contrast
+default_contrast=60
 
-## Raspberry Pi hardware SPI config for Nokia 5110 display
-#DC = 23
-#RST = 24
-#SPI_PORT = 0
-#SPI_DEVICE = 0
+# Raspberry Pi hardware SPI config for Nokia 5110 display
+DC = 23
+RST = 24
+SPI_PORT = 0
+SPI_DEVICE = 0
 
-## Hardware SPI usage:
-#disp = LCD.PCD8544(DC, RST, spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=4000000))
-## Initialize library.
-#disp.begin(contrast=default_contrast)
+# Hardware SPI usage:
+spidev=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=4000000)
+disp = LCD.PCD8544(DC, RST, spi=spidev)
+# Initialize library.
+disp.begin(contrast=default_contrast)
 
 ##############################################################################
 # Sensor Initialize
@@ -97,20 +98,20 @@ while True:
 		print 'Button pressed'
 		press_time=time.time()
 		if mod==0 or mod==modmax:
-			WS.display_reset()
-			WS.display_curdata(temperature,pressure,humidity)
+			WS.display_reset(spidev)
+			WS.display_curdata(spidev,temperature,pressure,humidity)
 			mod=1
 
 		elif mod>0:
-			WS.display_reset()
-			WS.display_image(figs[mod-1], titles[mod-1])
+			WS.display_reset(spidev)
+			WS.display_image(spidev,figs[mod-1], titles[mod-1])
 			mod+=1
 			if mod>modmax:
 				mod=0
 	# Clear display when inactive
 	if mod!=0 and (time.time()-press_time)>display_dura:
 		print 'Inactivity: Clearing disp'
-		WS.display_reset()
+		WS.display_reset(spidev)
 		mod=0
 
 	prev_inread=inread

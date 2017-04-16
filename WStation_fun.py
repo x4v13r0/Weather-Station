@@ -36,9 +36,9 @@ def get_sensordata(sensor):
 	humi = sensor.read_humidity()
 	return [temp, pres, humi]
 
-def display_curdata(temperature,pressure,humidity):
+def display_curdata(spidev,temperature,pressure,humidity):
 	# Hardware SPI usage:
-	disp = LCD.PCD8544(DC, RST, spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=4000000))
+	disp = LCD.PCD8544(DC, RST, spi=spidev)
 	# Initialize library.
 	disp.begin(contrast=default_contrast)
 	# Clear display.
@@ -71,9 +71,9 @@ def display_curdata(temperature,pressure,humidity):
 	disp.image(image)
 	disp.display()
 
-def display_image(image_file,title):
+def display_image(spidev,image_file,title):
 	# Hardware SPI usage:
-	disp = LCD.PCD8544(DC, RST, spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=4000000))
+	disp = LCD.PCD8544(DC, RST, spi=spidev)
 	# Initialize library.
 	disp.begin(contrast=default_contrast)
 	
@@ -82,15 +82,12 @@ def display_image(image_file,title):
 	disp.display()
 	
 	# Load image and convert to 1 bit color and resize
-#	image = Image.open(image_file).convert('1').resize((LCD.LCDWIDTH, LCD.LCDHEIGHT))
 	image = Image.open(image_file).convert('1')
 
 	# Get drawing object to draw on image.
 	draw = ImageDraw.Draw(image)
 
 	# Load font.
-	font = ImageFont.load_default()
-	#font_path='/usr/share/fonts/truetype/roboto/Roboto-Regular.ttf'
 	font_path='dotmatrixnormal.ttf'
 	font = ImageFont.truetype(font_path,10)
 	draw.text((15,40), title, font=font)
@@ -99,9 +96,9 @@ def display_image(image_file,title):
 	disp.image(image)
 	disp.display()
 	
-def display_reset():
+def display_reset(spidev):
 	# Hardware SPI usage:
-	disp = LCD.PCD8544(DC, RST, spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=4000000))
+	disp = LCD.PCD8544(DC, RST, spi=spidev)
 	disp.reset()
 
 def gen_curve(datafile):
