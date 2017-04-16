@@ -4,7 +4,7 @@ import Adafruit_Nokia_LCD as LCD
 import Adafruit_GPIO.SPI as SPI
 from Adafruit_BME280 import *
 
-import WStation_fun_06 as WS
+import WStation_fun as WS
 #import numpy as np
 
 ##############################################################################
