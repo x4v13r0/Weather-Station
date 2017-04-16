@@ -9,4 +9,4 @@ Adafruit_GPIO
 Adafruit_BME280
 numpy
 matplotlib
-
+PIL
