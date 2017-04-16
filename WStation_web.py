@@ -21,6 +21,6 @@ prev_time=time.time()
 
 while True:
     if time.time()-prev_time>refresh_dur:
-		print "Updating web curves"
+        print "Updating web curves"
         WS.gen_web_curve(logfile,web_figs,web_titles,durs,durnames)
         prev_time=time.time()
