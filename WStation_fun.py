@@ -145,46 +145,6 @@ def gen_curve(datafile,figs,titles):
 		imgbw.save(fig)
 	plt.close('all')
 		
-def gen_curve_old(datafile,figs):
-	data=np.loadtxt(datafile)
-	ind=data[:,0]>data[-1,0]-24*60*60 # Last day restriction
-	dat=data[ind,:]
-	t=dat[:,0]
-	for i in range(1,dat.shape[1]):
-		fig=figs[i-1]
-		dati=dat[:,i]
-
-		# 84x48 @100dpi by defaults
-		plt.figure(i,figsize=(LCD.LCDWIDTH/100., LCD.LCDHEIGHT/100.))
-		ax=plt.axes(frameon=False)
-		ax.set_position([0,0.7,1,0.7])
-		plt.plot(t,dati,'sk',ms=1,mfc='k')
-		ma=np.ceil(dati.max())
-		mi=np.floor(dati.min())
-		plt.ylim([mi,ma])
-		plt.xlim([t.min()-1.,t.max()+1.])
-		# Ticks config
-		med=np.floor((mi+ma)/2.)
-		ytis=np.unique([mi,med,ma])
-		plt.yticks(ytis)
-		plt.xticks([])
-		
-		# Save temporary figure
-		plt.yticks([])
-		plt.savefig('figure_tmp.png')
-		
-		# Add yticks to graph with PIL
-		image = Image.open('figure_tmp.png').convert('1')
-		# Get drawing object to draw on image.
-		draw = ImageDraw.Draw(image)
-		# Load font.
-		font_path='dotmatrixnormal.ttf'
-		font = ImageFont.truetype(font_path,10)
-		for j,yti in enumerate(ytis):
-			ypos=30-(yti-mi)*30/(ma-mi)
-			draw.text((10,ypos), '-%.0f' % yti, font=font)
-		image.save(fig,'PNG')
-
 def gen_web_curve(datafile,figs,titles):
 	data=np.loadtxt(datafile)
 	t=data[:,0]
@@ -197,6 +157,7 @@ def gen_web_curve(datafile,figs,titles):
 		plt.plot(t,dati,'b',lw=2)
 		plt.xlabel('time',fontsize=10)
 		plt.ylabel(title,fontsize=10)
+		plt.grid()
 		#plt.show()
 
 		plt.savefig('/var/www/html/'+fig)

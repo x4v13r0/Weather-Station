@@ -4,7 +4,7 @@ import Adafruit_Nokia_LCD as LCD
 import Adafruit_GPIO.SPI as SPI
 from Adafruit_BME280 import *
 
-import WStation_fun_05 as WS
+import WStation_fun_06 as WS
 #import numpy as np
 
 ##############################################################################
@@ -12,6 +12,7 @@ import WStation_fun_05 as WS
 measu_period = 10.*60. # in seconds - measurement period
 measu_period = 10. # in seconds - measurement period
 display_dura = 10. # in seconds - display duration
+bl_dura=display_dura/2 # backlight duration
 
 # LCD display modes
 modmax=4             # 0: no display, 1: data, 2: temp, 3: pres, 4: humidity
@@ -23,6 +24,13 @@ buttonPin=21
 # Control button initialization
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(buttonPin,GPIO.IN)
+
+##############################################################################
+# Backlight pin
+blPin=20
+
+# initialization
+GPIO.setup(blPin,GPIO.OUT,initial=0)
 
 ##############################################################################
 # LCD contrast
@@ -110,11 +118,13 @@ while True:
 		if mod==0 or mod==modmax:
 			WS.display_reset(spidev)
 			WS.display_curdata(spidev,temperature,pressure,humidity)
+			GPIO.output(blPin,1)
 			mod=1
 
 		elif mod>0:
 			WS.display_reset(spidev)
 			WS.display_image(spidev,figs[mod-1])
+			GPIO.output(blPin,1)
 			mod+=1
 			if mod>modmax:
 				mod=0
@@ -123,6 +133,11 @@ while True:
 		print 'Inactivity: Clearing disp'
 		WS.display_reset(spidev)
 		mod=0
+
+	# Backlight off
+	if GPIO.input(blPin) and (time.time()-press_time)>bl_dura:
+		print 'Backlight Off'
+		GPIO.output(blPin,0)
 
 	prev_inread=inread
 	time.sleep(0.05)
