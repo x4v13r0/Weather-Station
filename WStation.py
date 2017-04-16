@@ -80,13 +80,6 @@ figs  =['figure_1.png','figure_2.png','figure_3.png']
 titles=['T 24h (dgC)','P 24h (hPa)','HR 24h (%)']
 # LCD Figures initialization
 WS.gen_curve(logfile,figs,titles)
-
-# Web Figures
-web_figs  =['web_figure_1.png','web_figure_2.png','web_figure_3.png']
-web_titles=['Temperature (dgC)','Pressure (hPa)','Relative humidity (%)']
-# Web Figures initialization
-WS.gen_web_curve(logfile,web_figs,web_titles)
-
 ##############################################################################
 # Initialize loop
 prev_inread=0
@@ -108,8 +101,6 @@ while True:
 			log.write('%17.6f %.2f %.2f %.2f\n' % (cur_time, temperature, pressure, humidity))
 		
 		WS.gen_curve(logfile,figs,titles)
-		WS.gen_web_curve(logfile,web_figs,web_titles)
-
 	# Button interactions
 	inread=GPIO.input(buttonPin)
 	if inread and not prev_inread:
