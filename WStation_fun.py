@@ -8,6 +8,7 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 
+import os.path
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -23,13 +24,13 @@ mpl.rcParams["axes.formatter.useoffset"]=False
 ##############################################################################
 # BME280 sensor initialization
 ##############################################################################
-sensor = BME280.BME280(mode=BME280.BME280_OSAMPLE_8)
+SENSOR = BME280.BME280(mode=BME280.BME280_OSAMPLE_8)
 
 ##############################################################################
 # LCD display
 ##############################################################################
 # LCD contrast
-default_contrast=50
+DEFAULT_CONTRAST=50
 
 # Raspberry Pi hardware SPI config for Nokia 5110 display
 DC = 23
@@ -38,25 +39,25 @@ SPI_PORT = 0
 SPI_DEVICE = 0
 
 # Hardware SPI usage:
-spidev=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=4000000)
-disp = LCD.PCD8544(DC, RST, spi=spidev)
+SPIDEV=SPI.SpiDev(SPI_PORT, SPI_DEVICE, max_speed_hz=4000000)
+disp = LCD.PCD8544(DC, RST, spi=SPIDEV)
 # Initialize library.
-#disp.begin(contrast=default_contrast)
+#disp.begin(contrast=DEFAULT_CONTRAST)
 
 ##############################################################################
 # Functions
 ##############################################################################
 def get_sensordata():
-    temp = sensor.read_temperature()
-    pres = sensor.read_pressure() / 100. # hectopascals
-    humi = sensor.read_humidity()
+    temp = SENSOR.read_temperature()
+    pres = SENSOR.read_pressure() / 100. # hectopascals
+    humi = SENSOR.read_humidity()
     return [temp, pres, humi]
 
 def display_curdata(temperature,pressure,humidity):
     # Hardware SPI usage:
-    disp = LCD.PCD8544(DC, RST, spi=spidev)
+    disp = LCD.PCD8544(DC, RST, spi=SPIDEV)
     # Initialize library.
-    disp.begin(contrast=default_contrast)
+    disp.begin(contrast=DEFAULT_CONTRAST)
     # Clear display.
     disp.clear()
     disp.display()
@@ -88,9 +89,9 @@ def display_curdata(temperature,pressure,humidity):
 
 def display_image(image_file):
     # Hardware SPI usage:
-    disp = LCD.PCD8544(DC, RST, spi=spidev)
+    disp = LCD.PCD8544(DC, RST, spi=SPIDEV)
     # Initialize library.
-    disp.begin(contrast=default_contrast)
+    disp.begin(contrast=DEFAULT_CONTRAST)
     
     # Clear display.
     disp.clear()
@@ -105,11 +106,11 @@ def display_image(image_file):
     disp.image(imgbw)
     disp.display()
     
-def display_image_old(spidev,image_file,title):
+def display_image_old(SPIDEV,image_file,title):
     # Hardware SPI usage:
-    disp = LCD.PCD8544(DC, RST, spi=spidev)
+    disp = LCD.PCD8544(DC, RST, spi=SPIDEV)
     # Initialize library.
-    disp.begin(contrast=default_contrast)
+    disp.begin(contrast=DEFAULT_CONTRAST)
     
     # Clear display.
     disp.clear()
@@ -132,7 +133,7 @@ def display_image_old(spidev,image_file,title):
     
 def display_reset():
     # Hardware SPI usage:
-    disp = LCD.PCD8544(DC, RST, spi=spidev)
+    disp = LCD.PCD8544(DC, RST, spi=SPIDEV)
     disp.reset()
 
 def gen_curve(datafile,figs,titles):
@@ -162,21 +163,24 @@ def gen_curve(datafile,figs,titles):
         plt.xticks([])
         plt.xlabel(title,fontsize=8,fontname="Dot-Matrix",fontweight="bold")
         plt.savefig(fig,dpi=100)
-        #Force black and white
+        # Force black and white
         imggray=Image.open(fig).convert('L')
         imgbw=imggray.point(lambda x: 0 if x<230 else 255, '1')
         imgbw.save(fig)
     plt.close('all')
         
-def gen_web_curve(datafile,figs,titles,durs,durnames):
+def gen_web_curve(datafile,figs,titles,durs,durnames,savepath):
     data=np.loadtxt(datafile)
     t1=data[-1,0]
+    tmin=data[0,0]
     for idur,dur in enumerate(durs):
-        t0=t1-dur
-        tt0=datetime.datetime.fromtimestamp(t0)
-        ind=data[:,0]>t0
+        ind=data[:,0]>t1-dur
         dat=data[ind,:]
         t=dat[:,0]
+
+        t0=max(t1-dur,tmin)
+        tt0=datetime.datetime.fromtimestamp(t0)
+
         tt=[]
         for it,tmp in enumerate(t):
             tt.append(datetime.datetime.fromtimestamp(dat[it,0]))
@@ -186,24 +190,28 @@ def gen_web_curve(datafile,figs,titles,durs,durnames):
             
             dati=dat[:,i]
             plt.figure(i,figsize=(12,8))
-            plt.plot(tt,dati,'b',lw=2)
             plt.xlim(tt0,tt[-1])
             plt.xlabel('time',fontsize=14)
-            plt.ylabel(title,fontsize=14)
+            plt.ylabel(title,fontsize=16)
             if durnames[idur]=='day':
+                plt.plot(tt,dati,'b',lw=2)
                 plt.gca().xaxis.set_major_formatter(mdt.DateFormatter('%Hh'))
-                plt.gca().xaxis.set_major_locator(mdt.HourLocator())
+                plt.gca().xaxis.set_major_locator(mdt.HourLocator(interval=2))
             elif durnames[idur]=='week':
+                plt.plot(tt,dati,'b',lw=2)
                 plt.gca().xaxis.set_major_formatter(mdt.DateFormatter('%a'))
                 plt.gca().xaxis.set_major_locator(mdt.DayLocator())
             elif durnames[idur]=='month':
+                plt.plot(tt,dati,'ob',lw=2)
                 plt.gca().xaxis.set_major_formatter(mdt.DateFormatter('%b %d'))
                 plt.gca().xaxis.set_major_locator(mdt.WeekdayLocator())
             else:
+                plt.plot(tt,dati,'ob',lw=2)
                 plt.gca().xaxis.set_major_formatter(mdt.DateFormatter('%b %y'))
                 plt.gca().xaxis.set_major_locator(mdt.MonthLocator())
 
             plt.grid()
-            plt.savefig('/var/www/html/'+fig+'_'+durnames[idur])
+            figname=os.path.join(savepath,fig+'_'+durnames[idur]+'.png')
+            plt.savefig(figname,transparent=True,bbox_inches='tight')
             plt.close(i)
     plt.close('all')
